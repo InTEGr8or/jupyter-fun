@@ -3,9 +3,6 @@
 # %%
 from IPython import get_ipython
 
-# %% [markdown]
-# <a href="https://colab.research.google.com/github/InTEGr8or/jupyter-fun/blob/master/nCov2019.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
-
 # %%
 try:
   from bs4 import BeautifulSoup
@@ -18,6 +15,9 @@ import numpy as np
 from dateutil import parser
 from datetime import datetime
 import pandas as pd
+from sys import platform
+
+repo = "https://github.com/CSSEGISandData/COVID-19"
 
 tsc_csv = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv"
 tsm_csv = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv"
@@ -49,20 +49,32 @@ states = {
   'QC': 'Quebec', 'SK': 'Saskatchewan', 'YT': 'Yukon'
 }
 
+def cdate(date):
+  if platform == 'win32':
+    return date.strftime("%#m/%#d/%y")
+  else:
+    return date.strftime("%-m/%-d/%y")
+
+def datecols(df):
+  return [col for i, col in enumerate(df.columns) if is_date(col) ]
+
 def update_firsts(df, firsts_col):
   # Get date of first death or days since first death.
-  df[firsts_col] = ''
-  dates = [col for col in df.columns if is_date(col) ]
+  df[f'{firsts_col}'] = ''
+  dates = sorted([parser.parse(col) for col in df.columns if is_date(col) ])
+  # print(f"{firsts_col} dates:", dates, df.columns)
   for i, row in df.iterrows():
+    found_first = False
     for date in dates:
       try:
-        if row[date] != None and row[date] > 0:
-          df.at[i, firsts_col] = 'updated'
+        if not found_first and row[cdate(date)] > 0:
+          found_first = True
+          df.at[i, firsts_col] = date.strftime('%Y-%m-%d')
           # print(f"update_firsts(df, {firsts_col}):\n", date, row[date])
-      except:
-        print(f"### ERROR update_firsts(df, {firsts_col}):\n", i)
-  print(f"{firsts_col}\n", df)
-  return df
+      except Exception as e:
+        # pass
+        print(f"### ERROR update_firsts(df, {firsts_col}):\n", cdate(date), row, e)
+  # print(f"update_firsts({firsts_col})\n", df.iloc[:3])
 
 def is_date(text):
   try:
@@ -71,18 +83,7 @@ def is_date(text):
   except:
     return False
 
-def hotten(s):
-    '''
-    highlight the maximum in a Series yellow.
-    '''
-    if '%' in s:
-      # print(s)
-      is_max = float(s.replace('%', '')) > 20
-      return ['background-color: yellow' if v else '' for v in is_max]
-    else:
-      return 'background-color: black'
-
-def color_negative_red(val):
+def hotten(val):
     """
     Takes a scalar and returns a string with
     the css property `'color: red'` for negative
@@ -90,93 +91,72 @@ def color_negative_red(val):
     """
     heat = str(hex(min(int(val.replace('%', '')) * 10 + 56, 255))).split('x')[-1].upper()
     color = f'#{heat}5555'
-    # print(val, heat, color)
-    return 'color: %s' % color
-
+    result = 'color: %s;' % color
+    # print(val, result)
+    return result
 
 # %%
-dft = pd.read_csv(tsc_csv)
-dates = [col for i, col in enumerate(dft.columns) if is_date(col) ]
+df = pd.read_csv(tsc_csv).drop(columns=['Lat', 'Long'])
+dates = datecols(df)
+today_col = dates[-1]
 dates.reverse()
 
 dfr = pd.read_csv(tsr_csv)
-dfm = pd.read_csv(tsm_csv)
+dfm = pd.read_csv(tsm_csv).drop(columns=['Lat', 'Long'])
+df.rename(columns={'Country/Region': 'Country', 'Province/State': 'State'}, inplace=True)
 dfm.rename(columns={'Country/Region': 'Country', 'Province/State': 'State'}, inplace=True)
+df['Country'].replace('Mainland China', 'China', inplace=True)
+df['Country'].replace('United Arab Emirates', 'UAE', inplace=True)
 dfm['Country'].replace('Mainland China','China', inplace=True)
-mdates = [col for i, col in enumerate(dfm.columns) if is_date(col)]
+dfm['Country'].replace('United Arab Emirates', 'UAE', inplace=True)
+mdates = datecols(dfm)
 
-# Get date of first death or days since first death.
-dfm = update_firsts(dfm, 'First Death')
+update_firsts(df, 'First Confirmed')
+update_firsts(dfm, 'First Death')
 
 dfm.set_index(['Country', 'State'], inplace=True)
-dft.fillna('')
+df.fillna('')
+df['Country'].fillna('')
 dfm.fillna('')
-df = pd.DataFrame()
 
-df['Country'] = dft['Country/Region'].replace('Mainland China', 'China').replace('United Arab Emirates', 'UAE')
-df['State'] = dft['Province/State'].fillna('')
-# df.set_index(['Country', 'State'], inplace=True)
-df['Death Toll'] = 0
-df['Death Aging'] = 0
+df.set_index(['Country', 'State'], inplace=True)
+df['Death Toll'] = dfm[today_col].fillna(0).apply(lambda toll: int(toll))
+df['First Death'] = dfm[dfm.columns[-1]].fillna('')
+df['Death Aging'] = datetime.now() - df['First Death'].apply(lambda date: parser.parse(date, fuzzy=True) if is_date(date) else '')
+df['Death Aging'] = df['Death Aging'].apply(lambda days: ' '.join(str(days).replace('NaT', '').split(' ')[:2]))
+df.drop(columns=['First Death'], inplace=True)
 
-df = update_firsts(df, 'First Confirmed')
-df
-# df['Confirmed Aging'] = datetime.now() - df['First Case'].apply(lambda date: parser.parse(date, fuzzy=True))
-# df['Confirmed Aging'] = df['Confirmed Aging'].apply(lambda days: str(days).split(' ')[0])
-# df.drop(columns=['First Case'], inplace=True)
-# df.sort_values(by=['Country','State'], ascending=[True, True], inplace=True)
-# today = dates[0]
-# mtoday = mdates[-1]
-# print("Latest sheet dates:", today, mtoday)
-# for i, row in df.iterrows():
-#   country = row['Country']
-#   state = row['State']
-#   locality = ''
-#   ### They've cleaned up their join columns a bit.
-#   # if ',' in state:
-#   #   locality = state.split(',')[0].strip()
-#   #   state = states[state.split(',')[1].strip()]
-#   if state == '' or state == 'NaN':
-#     try:
-#       mrow = dfm.loc[country, mtoday]
-#       if 'Phil' in country:
-#         # print('Phil:', country, type(country))
-#         # print('Phil', mrow[0])
-#         mrow = mrow[0]
-#     except:
-#       mrow = 0
-#   else:
-#     try:
-#       mrow = dfm.loc[country, :].loc[state, mtoday]
-#     except:
-#       print("ERROR:", country, state, type(state))
-#       mrow = 0
-#   if isinstance(mrow, (int, float, complex)) and not isinstance(mrow, bool):
-#     if mrow > 0:
-#       print(row['Country'], row['State'], mrow)
-#       df.at[i, 'Death Toll'] = mrow
-# print(dfm[mtoday])
-# # Remove early results
-# for i, date in enumerate(dates):
-#   if i < len(dates) -1 and parser.parse(date).day == parser.parse(dates[i + 1]).day:
-#     del dates[i + 1]
-# # Append to columns
+df['Confirmed Aging'] = datetime.now() - df['First Confirmed'].apply(lambda date: parser.parse(date, fuzzy=True))
+df['Confirmed Aging'] = df['Confirmed Aging'].apply(lambda days: ' '.join(str(days).split(' ')[:2]))
+df.drop(columns=['First Confirmed'], inplace=True)
+
 percents = []
-for i, date in enumerate(dates):
+drop_dates = []
+rev_dates = sorted([parser.parse(date) for date in dates], reverse=True)
+for i, date in enumerate(rev_dates):
+  date = cdate(date)
   d = parser.parse(date)
   col = d.strftime('%B')[:3] + d.strftime('%d')
-  df[col] = dft[date].replace(np.inf, 0).fillna(0).astype(int)
+
+  df[col] = df[date].replace(np.inf, 0).fillna(0).astype(int)
   if i < len(dates) - 1:
     pcol = dates[i + 1]
-    percents.append(col + '%')
-    df[col + '%'] = round((dft[date] / dft[dates[i + 1]].fillna(0) * 100) - 100).replace(np.inf, 0).fillna(0).astype(int).astype(str) + '%'
-
-
+    pct_idx = df.columns.get_loc(pcol)
+    pct_col = col + '%'
+    percents.append(pct_col)
+    pct_val = round((df[date] / df[dates[i + 1]].fillna(0) * 100) - 100).replace(np.inf, 0).fillna(0).astype(int).astype(str) + '%'
+    drop_dates.append(date)
+    # df.insert(pct_idx, pct_col, pct_val)
+    df[pct_col] = pct_val
+df.drop(columns=dates, inplace=True)
+df
 # %%
 # df.set_index('Country', inplace=True)
 df.style.set_table_styles(
     [{'selector': 'tr:hover',
       'props': [('background-color', 'black')]}]
-).applymap(color_negative_red, subset=percents)
-df
+).applymap(hotten, subset=percents)
 
+
+
+# %%
