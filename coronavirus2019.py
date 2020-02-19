@@ -3,6 +3,7 @@
 # %%
 from IPython import get_ipython
 
+
 # %%
 try:
   from bs4 import BeautifulSoup
@@ -95,6 +96,7 @@ def hotten(val):
     # print(val, result)
     return result
 
+
 # %%
 df = pd.read_csv(tsc_csv).drop(columns=['Lat', 'Long'])
 dates = datecols(df)
@@ -149,7 +151,7 @@ for i, date in enumerate(rev_dates):
     # df.insert(pct_idx, pct_col, pct_val)
     df[pct_col] = pct_val
 df.drop(columns=dates, inplace=True)
-df
+
 # %%
 # df.set_index('Country', inplace=True)
 df.style.set_table_styles(
