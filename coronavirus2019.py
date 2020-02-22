@@ -152,12 +152,14 @@ for i, date in enumerate(rev_dates):
     df[pct_col] = pct_val
 df.drop(columns=dates, inplace=True)
 
+
 # %%
 # df.set_index('Country', inplace=True)
 df.style.set_table_styles(
     [{'selector': 'tr:hover',
       'props': [('background-color', 'black')]}]
 ).applymap(hotten, subset=percents)
+df.to_html("docs/coronavirus.html")
 
 
 
