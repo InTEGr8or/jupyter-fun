@@ -159,7 +159,7 @@ df.style.set_table_styles(
     [{'selector': 'tr:hover',
       'props': [('background-color', 'black')]}]
 ).applymap(hotten, subset=percents)
-df.to_html("docs/coronavirus.html")
+df.to_html("docs/index.html")
 
 
 
