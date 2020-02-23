@@ -164,11 +164,11 @@ sytled_df = df.style.set_table_styles(
         ]
       },
       {
-        'selector': 'tbody',
+        'selector': 'table',
         'props': [
           ('color', 'white'),
           ('background-color', 'black'),
-          #('font-family', '/fonts/FuraMono-Regular Powerline.otf')
+          ('font-family', '/fonts/FuraMono-Regular Powerline.otf')
         ]
       }]
 ).applymap(hotten, subset=percents)
