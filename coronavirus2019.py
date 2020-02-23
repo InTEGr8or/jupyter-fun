@@ -167,7 +167,8 @@ sytled_df = df.style.set_table_styles(
         'selector': 'body',
         'props': [
           ('color', 'white'),
-          ('background-color', 'black')
+          ('background-color', 'black'),
+          ('font-family', 'FuraMono-Regular Powerline.otf')
         ]
       }]
 ).applymap(hotten, subset=percents)
