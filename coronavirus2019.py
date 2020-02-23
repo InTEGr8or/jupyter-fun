@@ -156,11 +156,24 @@ df.drop(columns=dates, inplace=True)
 # %%
 # df.set_index('Country', inplace=True)
 sytled_df = df.style.set_table_styles(
-    [{'selector': 'tr:hover',
-      'props': [('background-color', 'black')]}]
+    [
+      {
+        'selector': 'tr:hover',
+        'props': [
+          ('background-color', 'black')
+        ]
+      },
+      {
+        'selector': 'tbody',
+        'props': [
+          ('color', 'white'),
+          ('background-color', 'black')
+        ]
+      }]
 ).applymap(hotten, subset=percents)
 file = open("docs/index.html", "w")
 file.write(sytled_df.render())
+sytled_df
 
 
 
