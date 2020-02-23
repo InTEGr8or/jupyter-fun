@@ -164,7 +164,7 @@ sytled_df = df.style.set_table_styles(
         ]
       },
       {
-        'selector': 'body',
+        'selector': 'tbody',
         'props': [
           ('color', 'white'),
           ('background-color', 'black'),
